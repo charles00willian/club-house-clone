@@ -3,13 +3,13 @@ import Room from "../entities/room.js";
 import { constants } from "../util/constants.js";
 
 export default class RoomsController {
-  #user = new Map();
+  #users = new Map();
   constructor(){
     this.rooms = new Map();
   }
 
   #updateGlobalUserData(userId, userData = {}, roomId = '') {
-    const user = this.#user.get(userId) ?? {};
+    const user = this.#users.get(userId) ?? {};
     const existingRoom = this.rooms.has(roomId);
 
     const updatedUserData = new Attendee({
@@ -20,9 +20,9 @@ export default class RoomsController {
       isSpeaker: !existingRoom
     })
 
-    this.#user.set(userId, updatedUserData);
+    this.#users.set(userId, updatedUserData);
 
-    return this.#user.get(userId);
+    return this.#users.get(userId);
   }
 
   #mapRoom(room) {
@@ -78,13 +78,78 @@ export default class RoomsController {
     return this.rooms.get(roomId);
   }
 
-  
+  #getNewRoomOwner(socket, room) {
+    const users = [...room.users.values()];
+    const activeSpeakers = users.find(user => user.isSpeaker);
+
+    //se quem desconectou era o dono, passa a liderança para o próximo
+    //se não houver speakers, ele pega o attendee mais antigo (primeira posição)
+    const [ newOwner ] = activeSpeakers ? [activeSpeakers] : users;
+    newOwner.isSpeaker = true;
+
+    const outdatedUser = this.#users.get(newOwner.id);
+    const udpateduser = new Attendee({
+      ...outdatedUser,
+      ...newOwner
+    });
+
+    this.#users.set(newOwner.id, udpateduser);
+
+    return newOwner;
+  }
+
+  #logoutUser(socket) {
+    const userId = socket.id;
+    const user = this.#users.get(userId);
+    const roomId = user.roomId;
+    //remover user da lista de usuários ativos
+    this.#users.delete(userId);
+
+    //caso seja um usário sujeira que estava em uma sala que não existe mais
+    if(!this.rooms.has(roomId)){
+      return;
+    }
+
+    const room = this.rooms.get(roomId);
+    const toBeRemoved = [...room.users].find(({ id }) => id === userId);
+
+    // removemos o uário da sala
+    room.users.delete(toBeRemoved);
+
+    // se não tiver mais nenhum usuário na sala, matamos a sala
+    if(!room.users.size){
+      this.rooms.delete(roomId);
+      return
+    }
+
+    const disconnectUserWasAnOwner = userId === room.owner.id;
+    const onlyOneUserLeft = room.users.size === 1;
+
+    //validar se tem somente um usario ou se o usuario era o dono da sala
+
+    if(onlyOneUserLeft || disconnectUserWasAnOwner){
+      room.owner = this.#getNewRoomOwner(socket, room);
+    }
+
+    // atualiza a room no final
+    this.rooms.set(roomId, room);
+    
+    // notifica a sala que o usuário se desconectou
+    socket.to(roomId).emit(constants.event.USER_DISCONNECTED, user);
+
+
+  }
 
   onNewConnection(socket){
     const { id } = socket;
     console.log('connection established with', id);
 
     this.#updateGlobalUserData(id)
+  }
+
+  disconnect(socket) {
+    console.log('disconnect!!', socket.id);
+    this.#logoutUser(socket);
   }
 
   joinRoom(socket, { user, room}) {

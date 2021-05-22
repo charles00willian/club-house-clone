@@ -15,6 +15,20 @@ export default class View {
     imgUser.alt = username;
   }
 
+  static _getExistingItemOnGrid({
+    id,
+    baseElement = document
+  }){
+    const existingItem = baseElement.querySelector(`[id="${id}"]`);
+    return existingItem;
+  }
+
+  static removeItemFromGrid(id){
+    const existingItem = View._getExistingItemOnGrid({id});
+
+    existingItem?.remove()
+  }
+
   static updateRoomTopic({topic}) {
     roomTopic.innerHTML = topic;
   }
