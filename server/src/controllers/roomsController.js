@@ -1,12 +1,26 @@
 import Attendee from "../entities/attendee.js";
 import Room from "../entities/room.js";
 import { constants } from "../util/constants.js";
+import CustomMap from "../util/customMap.js";
 
 export default class RoomsController {
+
   #users = new Map();
-  constructor(){
-    this.rooms = new Map();
+
+  constructor({ roomsPubSub }){
+    this.roomsPubSub = roomsPubSub
+    this.rooms = new CustomMap({
+      observer: this.#roomObserver(),
+      customMapper: this.#mapRoom.bind(this)
+    });
   }
+
+  #roomObserver() {
+    return {
+      notify: (rooms) => this.notifyRoomsSubscriber(rooms)
+    }
+  }
+  
 
   #updateGlobalUserData(userId, userData = {}, roomId = '') {
     const user = this.#users.get(userId) ?? {};
@@ -142,6 +156,12 @@ export default class RoomsController {
     // notifica a sala que o usuário se desconectou
     socket.to(roomId).emit(constants.event.USER_DISCONNECTED, user);
 
+
+  }
+
+  notifyRoomsSubscriber(rooms) {
+    const event = constants.event.LOBBY_UPDATED;
+    this.roomsPubSub.emit(event, [...rooms.values()]);
 
   }
 

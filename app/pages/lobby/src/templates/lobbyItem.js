@@ -4,9 +4,7 @@ function createFeaturedSpeakersTemplate(featuredAttendees) {
   if(!featuredAttendees.length) return '';
 
   const attendees = featuredAttendees.map((attendee) =>{
-    return `
-      <li>${attendee.username} <span role="img" class="emoji">💬</span></li>
-    `
+    return `<li>${attendee.username} <span role="img" class="emoji">💬</span></li>`
   })
 
   return attendees;

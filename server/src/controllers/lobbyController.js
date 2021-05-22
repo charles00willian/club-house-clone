@@ -9,6 +9,12 @@ export default class LobbyController {
     this.roomsListener = roomsListener;
   }
 
+  #activateEventProxy(socket) {
+    this.roomsListener.on(constants.event.LOBBY_UPDATED, rooms => {
+      this.#updateLobbyRooms(socket, rooms);
+    })
+  }
+
   #updateLobbyRooms(socket, activeRooms) {
     socket.emit(constants.event.LOBBY_UPDATED, activeRooms);
   }
@@ -17,6 +23,7 @@ export default class LobbyController {
     const { id } = socket;
     console.log('[LOBBY] - connection established', id);
     this.#updateLobbyRooms(socket, [...this.activeRooms.values()]);
+    this.#activateEventProxy(socket);
   }
 
   getEvents() {
