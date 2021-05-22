@@ -5,12 +5,16 @@ export default class RoomController {
   constructor({
     roomInfo, 
     socketBuilder,
-    view
+    view,
+    peerBuilder,
+    roomService
   }){
     this.roomInfo =  roomInfo;
     this.socketBuilder = socketBuilder;
     this.socket = {};
     this.view = view;
+    this.peerBuilder = peerBuilder;
+    this.roomService = roomService;
   }
 
   static initialize(deps) {
@@ -20,8 +24,7 @@ export default class RoomController {
   async _initialize(){
     this._setupViewEvents();
     this.socket = this._setupSocket();
-    
-    this.socket.emit(constants.events.JOIN_ROOM, this.roomInfo)
+    this.roomService.setCurrentPeer(await this._setupWebRTC());
   }
 
   _setupViewEvents(){
@@ -38,21 +41,51 @@ export default class RoomController {
       .build()
   }
 
+  async _setupWebRTC() {
+    return this.peerBuilder
+      .setOnError(this.onPeerError())
+      .setOnConnectionOpened(this.onPeerConnectionOpened())
+      .build()
+  }
+
+  onPeerError() {
+    return (error) => { 
+      console.error('peer deu ruim', error)
+    };
+  }
+
+  // quando a conexão for abetta ele pede para entrar na sala do socket
+  onPeerConnectionOpened() {
+    return (peer) => { 
+      console.log('peer', peer)
+      this.roomInfo.user.peerId = peer.id;
+      this.socket.emit(constants.events.JOIN_ROOM, this.roomInfo)
+    };
+  }
+
   setOnUserProfileUpgrade() {
     return (user) => {
       const attendee = new Attendee(user);
       console.log('profile upgrade', attendee);
+      this.roomService.upgradeUserPermission(attendee)
 
       if(attendee.isSpeaker){
         this.view.addAttendeeOnGrid(attendee, true);
       }
+
+      this.activateUserFeatures();
     };
   }
 
   onRoomUpdated() {
-    return (room) => {
-      this.view.updateAttendeesOnGrid(room);
-      console.log('room list', room)
+    return (data) => {
+      const users = data.map(item => new Attendee(item));
+
+      this.view.updateAttendeesOnGrid(users);
+      this.roomService.updateCurrentUserProfile(users);
+      this.activateUserFeatures()
+
+      console.log('room list', data)
     };
   }
 
@@ -71,5 +104,10 @@ export default class RoomController {
       console.log('user connected', attendee);
       this.view.addAttendeeOnGrid(attendee);
     };
+  }
+
+  activateUserFeatures() {
+    const currentUser = this.roomService.getCurrentUser();
+    this.view.showUserFeatures(currentUser.isSpeaker);
   }
 }

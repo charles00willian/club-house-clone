@@ -1,6 +1,8 @@
 import { constants } from "../../_shared/constants.js"
+import PeerBuilder from "../../_shared/peerBulder.js"
 import SocketBuilder from "../../_shared/socket.js"
 import RoomController from "./controller.js"
+import RoomService from "./service.js"
 import RoomSocketBuilder from "./util/roomSocket.js"
 import View from "./view.js"
 
@@ -21,16 +23,23 @@ const roomInfo = {
   user
 }
 
+const peerBuilder = new PeerBuilder({
+  peerConfig: constants.peerConfig
+});
 
 const socketBuilder = new RoomSocketBuilder({
   socketUrl: constants.socketUrl,
   namespace: constants.socketNamespaces.room
 })
 
+const roomService = new RoomService();
+
 const dependencies = {
   view: View,
   socketBuilder,
-  roomInfo
+  roomInfo,
+  peerBuilder,
+  roomService
 }
 
 const roomController =  RoomController.initialize(dependencies);
