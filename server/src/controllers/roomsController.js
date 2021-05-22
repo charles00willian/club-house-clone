@@ -78,6 +78,10 @@ export default class RoomsController {
     return this.rooms.get(roomId);
   }
 
+  #notifyUserProfileUpgrade(socket, roomId, user) {
+    socket.to(roomId).emit(constants.event.UPGRADE_USER_PERMISSION, user);
+  }
+
   #getNewRoomOwner(socket, room) {
     const users = [...room.users.values()];
     const activeSpeakers = users.find(user => user.isSpeaker);
@@ -95,6 +99,7 @@ export default class RoomsController {
 
     this.#users.set(newOwner.id, udpateduser);
 
+    this.#notifyUserProfileUpgrade(socket, room.id, newOwner);
     return newOwner;
   }
 

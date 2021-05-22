@@ -34,7 +34,19 @@ export default class RoomController {
       .setOnUserConnected(this.onUserConnected())
       .setOnUserDisconnected(this.onUserDisconnected())
       .setOnRoomUpdated(this.onRoomUpdated())
+      .setOnUserProfileUpgrade(this.setOnUserProfileUpgrade())
       .build()
+  }
+
+  setOnUserProfileUpgrade() {
+    return (user) => {
+      const attendee = new Attendee(user);
+      console.log('profile upgrade', attendee);
+
+      if(attendee.isSpeaker){
+        this.view.addAttendeeOnGrid(attendee, true);
+      }
+    };
   }
 
   onRoomUpdated() {
