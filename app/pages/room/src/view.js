@@ -26,6 +26,32 @@ export default class View {
     return existingItem;
   }
 
+  static _createAudioElement({
+    muted = true,
+    srcObject,
+  }) {
+    const audio = document.createElement('audio');
+    audio.muted = muted;
+    audio.srcObject = srcObject;
+
+    audio.addEventListener('loadedmetadata', async () => {
+      try {
+        await audio.play()
+      } catch (error) {
+        console.log('error to play', error);
+      }
+    })
+
+    return audio;
+  }
+
+  static _appedToHTMLTree(userId, audio) {
+    const div = document.createElement('div');
+
+    div.id = userId;
+    div.append(audio);
+  }
+
   static removeItemFromGrid(id){
     const existingItem = View._getExistingItemOnGrid({id});
 
@@ -60,6 +86,17 @@ export default class View {
     }
 
     baseElement.innerHTML += htmlTemplate;
+  }
+
+  static renderAudioElement({
+    callerId,
+    stream,
+    isCurrentId
+  }) {
+     View._createAudioElement({
+      muted: isCurrentId,
+      srcObject: stream,
+    })
   }
 
   static showUserFeatures(isSpeaker) {
