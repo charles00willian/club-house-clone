@@ -29,8 +29,23 @@ export default class RoomController {
   }
 
   _setupViewEvents(){
+    this.view.configureLeaveButton();
+    this.view.configureMicrophoneToggle(this.onMicrophoneToggle());
+    this.view.configureClapButton(this.onClapPressed())
     this.view.updateUserImage(this.roomInfo.user)
     this.view.updateRoomTopic(this.roomInfo.room)
+  }
+
+  onMicrophoneToggle() {
+    return async () => { 
+      return this.roomService.toggleAudioActivation();
+    };
+  }
+
+  onClapPressed() {
+    return () => {
+      this.socket.emit(constants.events.SPEAK_REQUEST, this.roomInfo.user);
+    };
   }
 
   _setupSocket() {
@@ -39,6 +54,7 @@ export default class RoomController {
       .setOnUserDisconnected(this.onUserDisconnected())
       .setOnRoomUpdated(this.onRoomUpdated())
       .setOnUserProfileUpgrade(this.setOnUserProfileUpgrade())
+      .setOnSpeakRequested(this.onSpeakRequested())
       .build()
   }
 
@@ -110,13 +126,23 @@ export default class RoomController {
     };
   }
 
+
+  onSpeakRequested() {
+    return (data) => { 
+      const attendee = new Attendee(data);
+      const result = prompt(`${attendee.username} pediu para falar, aceitar? 1 sim, 0 não`);
+      console.log(result , 'result')
+      this.socket.emit(constants.events.SPEAK_ANSWER, { answer: !!Number(result), user: attendee });
+    };
+  }
+
   setOnUserProfileUpgrade() {
     return (user) => {
       const attendee = new Attendee(user);
       console.log('profile upgrade', attendee);
-      this.roomService.upgradeUserPermission(attendee)
-
+      
       if(attendee.isSpeaker){
+        this.roomService.upgradeUserPermission(attendee)
         this.view.addAttendeeOnGrid(attendee, true);
       }
 

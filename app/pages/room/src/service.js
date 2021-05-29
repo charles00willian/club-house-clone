@@ -8,6 +8,7 @@ export default class RoomService {
     this.currentPeer = {};
     this.currentUser = {};
     this.currentStream = {};
+    this.isAudioActive = true;
     this.peers = new Map();
   }
 
@@ -18,6 +19,36 @@ export default class RoomService {
     })
   }
 
+  async _reconnectAsSpeaker() {
+    return this.switchAudioStreamSource({ realAudio: true })
+  }
+
+  _reconnectPeers(stream) {
+    for(const peer of this.peers.values()) {
+      const peerId = peer.call.peer;
+      peer.call.close();
+      console.log('calling', peerId);
+
+      this.currentPeer.call(peerId, stream);
+    }
+  }
+
+  async switchAudioStreamSource({ realAudio }) {
+    const userAudio = realAudio 
+      ? await this.media.getUserAudio() 
+      : this.media.createMediaStreamFake();
+
+    this.currentStream = new UserStream({
+      isFake: realAudio,
+      stream: userAudio,
+    })
+
+    this.currentUser.isSpeaker = realAudio;
+
+    // precisa encerrar as chamadas para ligar novamente
+    this._reconnectPeers(this.currentStream.stream);
+  }
+
   setCurrentPeer(peer) {
     this.currentPeer = peer;
   }
@@ -26,7 +57,7 @@ export default class RoomService {
     return this.currentUser;
   }
 
-  upgradeUserPermission(user) {
+  async upgradeUserPermission(user) {
     if(!user.isSpeaker) return;
 
     const isCurrentUser = user.id === this.currentUser.id;
@@ -35,6 +66,7 @@ export default class RoomService {
 
     this.currentUser = user;
 
+    return this._reconnectAsSpeaker()
   }
 
   updateCurrentUserProfile(users) {
@@ -79,5 +111,12 @@ export default class RoomService {
 
     this.peers.get(peerId).call.close();
     this.peers.delete(peerId);
+  }
+
+  async toggleAudioActivation() {
+    this.isAudioActive = !this.isAudioActive;
+    this.switchAudioStreamSource({
+      realAudio: this.isAudioActive
+    })
   }
 }
