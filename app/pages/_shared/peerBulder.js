@@ -3,7 +3,7 @@ class PeerCustomModule extends globalThis.Peer {
       config,
       onCall,
     }) {
-      super(config);
+      super(...config);
 
       this.onCall = onCall;
     }

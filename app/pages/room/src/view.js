@@ -21,6 +21,10 @@ export default class View {
     imgUser.alt = username;
   }
 
+  static redirectToLogin() {
+    window.location = constants.pages.login
+  }
+
   static _getExistingItemOnGrid({
     id,
     baseElement = document
